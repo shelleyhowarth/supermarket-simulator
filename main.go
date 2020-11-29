@@ -23,44 +23,59 @@ func (t *Till) checkLength() int {
     return len(t.queue)
 }
 
+
 func (t *Till) processCustomers() {
+	processedCustomers := make (chan Customer)
 	for customer := range t.queue {
+		//fmt.Println("Till ID: ", t.tillId, " Queue: ", t.queue)
 		for i:= 0; i < customer.numberOfItems; i++ {
 			time.Sleep(50 * time.Millisecond) //change this to scanning speed
-			fmt.Println("Till ID: ", t.tillId, "- Customer ID: ", customer.customerId, ", Item: ", i)
+			//fmt.Println("Till ID: ", t.tillId, "- Customer ID: ", customer.customerId, ", Item: ", i)
+			if i == customer.numberOfItems - 1 {
+				time.Sleep(50 * time.Millisecond) //change this to scanning speed
+				//fmt.Println("(Last item)Till ID: ", t.tillId, "- Customer ID: ", customer.customerId, ", Item: ", i)
+				//Remove customer from channel
+				processedCustomers <- customer
+				/*
+				for i:= 0; i < len(processedCustomers); i++ {
+					fmt.Print("processed", i)
+				}
+				*/
+			}
 		}
     }
 }
 
-//Create customers at random intervals
+//Create customers every 0.5 seconds
 func generateCustomers(customers *[]Customer, running *bool) {
 		rand.Seed(time.Now().UnixNano())
 		count := 0
 		for *running {
 			customer := Customer {
 				customerId : count,
-				numberOfItems: (rand.Intn(100-1)+1),
+				numberOfItems: (rand.Intn(200-1)+1),
 			}
 			*customers = append(*customers, customer)
+			fmt.Println("Customers generated: ", *customers)
 			count++
 			time.Sleep(500 * time.Millisecond) 
 		}
 }
 
-//Assigning customers to queues
+//Assigning customers to queues every 0.5 seconds
 func customersToQueues(customers *[]Customer, tills *[]Till, running *bool) {
+	//sleep for 1 second so there's always customers generated before they're assigned
 	time.Sleep(1 * time.Second)
 	count := 0
 	for *running {
 			for i:= 0; i < 8; i++ {
-				for (*tills)[i].checkLength() < 6 {
+				for (*tills)[i].checkLength() < 6 && (*tills)[i].opened {
 					(*tills)[i].queue <- (*customers)[0]
-					fmt.Println("Assigning customers to till ", i, ": ", (*tills)[1].queue)
+					fmt.Println("Assigning customers to till ", i+1, ": ", (*tills)[1].queue)
 					*customers = append((*customers)[:0], (*customers)[0+1:]...)
 					fmt.Println("Slice after assignment", *customers)
 					time.Sleep(500 * time.Millisecond)
 				}
-
 				go (*tills)[i].processCustomers()
 			}
 		count++
@@ -96,18 +111,14 @@ func main() {
 	var customers []Customer
 	var tills []Till
 
+	//Setting up tills
 	createTills(&tills)
 
 	//Go routines
 	go generateCustomers(&customers, &running)
 	go customersToQueues(&customers, &tills, &running)
 	
-	/*
-	for i:=0; i < 8; i++ {
-		go tills[i].processCustomers()
-	}
-	*/
-
 	time.Sleep(60 * time.Second) 
+	fmt.Println("TIMES UP!")
 	running = false
 }
