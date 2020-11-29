@@ -49,6 +49,9 @@ func (t *Till) processCustomers() {
 //Create customers every 0.5 seconds
 func generateCustomers(customers *[]Customer, running *bool) {
 		rand.Seed(time.Now().UnixNano())
+		//good weather or bad weather
+		weather := (rand.Intn(2-1)+1)
+		fmt.Println("Weather is: ", weather)
 		count := 0
 		for *running {
 			customer := Customer {
@@ -58,7 +61,11 @@ func generateCustomers(customers *[]Customer, running *bool) {
 			*customers = append(*customers, customer)
 			fmt.Println("Customers generated: ", *customers)
 			count++
-			time.Sleep(500 * time.Millisecond) 
+			if weather == 1 {
+				time.Sleep(300 * time.Millisecond) 
+			} else if weather == 2 {
+				time.Sleep(500 * time.Millisecond) 
+			}
 		}
 }
 
