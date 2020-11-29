@@ -23,16 +23,6 @@ func (t *Till) checkLength() int {
     return len(t.queue)
 }
 
-//worker is a checkout, jobs are customers
-func worker(id int, jobs <-chan int, results chan<- int) {
-    for j := range jobs {
-        //fmt.Println("worker", id, "started  job", j)
-        time.Sleep(time.Second)
-        //fmt.Println("worker", id, "finished job", j)
-        results <- j * 2
-    }
-}
-
 //Create customers at random intervals
 func generateCustomers(customers *[]Customer, running *bool) {
 		rand.Seed(time.Now().UnixNano())
@@ -44,11 +34,28 @@ func generateCustomers(customers *[]Customer, running *bool) {
 			}
 			*customers = append(*customers, customer)
 			count++
-			fmt.Println(*customers)
+			fmt.Println("Customers: ", *customers)
 			time.Sleep(500 * time.Millisecond) 
 		}
 }
 
+//Assigning customers to queues
+func customersToQueues(customers *[]Customer, tills *[]Till, running *bool) {
+	time.Sleep(1 * time.Second)
+	count := 0
+	for *running {
+			for i:= 0; i < 8; i++ {
+				(*tills)[1].queue <- (*customers)[i]
+				fmt.Println("Assigning customers to queues: ", (*tills)[1].queue)
+				time.Sleep(500 * time.Millisecond)
+			}
+
+		count++
+	}
+
+}
+
+//Creating the initial till slice and opening a few of them
 func createTills(tills *[]Till) {
 	rand.Seed(time.Now().UnixNano())
 
@@ -61,7 +68,6 @@ func createTills(tills *[]Till) {
 		}
 		*tills = append(*tills, till)
 	}
-	fmt.Println(*tills)
 
 	tillsOpen := (rand.Intn(9-1)+1)
 	fmt.Println("Tills open at start of day: ", tillsOpen)
@@ -69,7 +75,7 @@ func createTills(tills *[]Till) {
 	for i:= 0; i < tillsOpen; i++ {
 		(*tills)[i].opened = true
 	}
-	fmt.Println(*tills)
+	fmt.Println("Tills at start of day: ", *tills)
 }
 
 func main() {
@@ -82,35 +88,10 @@ func main() {
 
 	//Go routines
 	go generateCustomers(&customers, &running)
+	go customersToQueues(&customers, &tills, &running)
 
 	time.Sleep(60 * time.Second) 
 	running = false
 
-
-
-
-
-
-
-
-
-	//Go routine to generate customers into a slice
-	const numJobs = 5
-	
-	//Put customers into a channel
-    jobs := make(chan int, numJobs)
-    results := make(chan int, numJobs)
-
-    for w := 1; w <= 3; w++ {
-        go worker(w, jobs, results)
-    }
-
-    for j := 1; j <= numJobs; j++ {
-        jobs <- j
-    }
-    close(jobs)
-
-    for a := 1; a <= numJobs; a++ {
-        <-results
     }
 }
