@@ -24,7 +24,12 @@ func (t *Till) checkLength() int {
 }
 
 func (t *Till) processCustomers() {
-
+	for customer := range t.queue {
+		for i:= 0; i < customer.numberOfItems; i++ {
+			time.Sleep(50 * time.Millisecond) //change this to scanning speed
+			fmt.Println("Till ID: ", t.tillId, "- Customer ID: ", customer.customerId, ", Item: ", i)
+		}
+    }
 }
 
 //Create customers at random intervals
@@ -38,7 +43,6 @@ func generateCustomers(customers *[]Customer, running *bool) {
 			}
 			*customers = append(*customers, customer)
 			count++
-			fmt.Println("Customers: ", *customers)
 			time.Sleep(500 * time.Millisecond) 
 		}
 }
@@ -56,11 +60,12 @@ func customersToQueues(customers *[]Customer, tills *[]Till, running *bool) {
 					fmt.Println("Slice after assignment", *customers)
 					time.Sleep(500 * time.Millisecond)
 				}
+
+				go (*tills)[i].processCustomers()
 			}
 		count++
 	}
 }
-
 
 //Creating the initial till slice and opening a few of them
 func createTills(tills *[]Till) {
@@ -96,6 +101,12 @@ func main() {
 	//Go routines
 	go generateCustomers(&customers, &running)
 	go customersToQueues(&customers, &tills, &running)
+	
+	/*
+	for i:=0; i < 8; i++ {
+		go tills[i].processCustomers()
+	}
+	*/
 
 	time.Sleep(60 * time.Second) 
 	running = false
