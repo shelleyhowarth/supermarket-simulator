@@ -23,6 +23,10 @@ func (t *Till) checkLength() int {
     return len(t.queue)
 }
 
+func (t *Till) processCustomers() {
+
+}
+
 //Create customers at random intervals
 func generateCustomers(customers *[]Customer, running *bool) {
 		rand.Seed(time.Now().UnixNano())
@@ -45,15 +49,18 @@ func customersToQueues(customers *[]Customer, tills *[]Till, running *bool) {
 	count := 0
 	for *running {
 			for i:= 0; i < 8; i++ {
-				(*tills)[1].queue <- (*customers)[i]
-				fmt.Println("Assigning customers to queues: ", (*tills)[1].queue)
-				time.Sleep(500 * time.Millisecond)
+				for (*tills)[i].checkLength() < 6 {
+					(*tills)[i].queue <- (*customers)[0]
+					fmt.Println("Assigning customers to till ", i, ": ", (*tills)[1].queue)
+					*customers = append((*customers)[:0], (*customers)[0+1:]...)
+					fmt.Println("Slice after assignment", *customers)
+					time.Sleep(500 * time.Millisecond)
+				}
 			}
-
 		count++
 	}
-
 }
+
 
 //Creating the initial till slice and opening a few of them
 func createTills(tills *[]Till) {
@@ -92,6 +99,4 @@ func main() {
 
 	time.Sleep(60 * time.Second) 
 	running = false
-
-    }
 }
