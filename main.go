@@ -27,26 +27,19 @@ func (t *Till) checkLength() int {
 func (t *Till) processCustomers() {
 	processedCustomers := make (chan Customer)
 	for customer := range t.queue {
-		//fmt.Println("Till ID: ", t.tillId, " Queue: ", t.queue)
 		for i:= 0; i < customer.numberOfItems; i++ {
 			time.Sleep(50 * time.Millisecond) //change this to scanning speed
-			//fmt.Println("Till ID: ", t.tillId, "- Customer ID: ", customer.customerId, ", Item: ", i)
 			if i == customer.numberOfItems - 1 {
 				time.Sleep(50 * time.Millisecond) //change this to scanning speed
-				//fmt.Println("(Last item)Till ID: ", t.tillId, "- Customer ID: ", customer.customerId, ", Item: ", i)
 				//Remove customer from channel
+				fmt.Println("processed ", customer)
 				processedCustomers <- customer
-				/*
-				for i:= 0; i < len(processedCustomers); i++ {
-					fmt.Print("processed", i)
-				}
-				*/
 			}
 		}
     }
 }
 
-//Create customers every 0.5 seconds
+//Create customers every 0.3 or 0.5 seconds
 func generateCustomers(customers *[]Customer, running *bool) {
 		rand.Seed(time.Now().UnixNano())
 		//good weather or bad weather
@@ -70,20 +63,30 @@ func generateCustomers(customers *[]Customer, running *bool) {
 }
 
 //Assigning customers to queues every 0.5 seconds
-func customersToQueues(customers *[]Customer, tills *[]Till, running *bool) {
+func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Customer, running *bool) {
 	//sleep for 1 second so there's always customers generated before they're assigned
 	time.Sleep(1 * time.Second)
 	count := 0
 	for *running {
 			for i:= 0; i < 8; i++ {
+				go (*tills)[i].processCustomers()
 				for (*tills)[i].checkLength() < 6 && (*tills)[i].opened {
+					//Adds customer to queue
 					(*tills)[i].queue <- (*customers)[0]
 					fmt.Println("Assigning customers to till ", i+1, ": ", (*tills)[1].queue)
+					//After added to queue, delete customer from slice
 					*customers = append((*customers)[:0], (*customers)[0+1:]...)
 					fmt.Println("Slice after assignment", *customers)
 					time.Sleep(500 * time.Millisecond)
 				}
-				go (*tills)[i].processCustomers()
+				if (*tills)[i].checkLength() == 6 {
+					fmt.Println("Customer lost: ", (*customers)[0])
+					//Add to lost customers slice
+					*lostCustomers = append(*lostCustomers, (*customers)[0])
+
+					//Remove from original customers slice
+					*customers = append((*customers)[:0], (*customers)[0+1:]...)
+				}
 			}
 		count++
 	}
@@ -117,15 +120,18 @@ func main() {
 	running := true
 	var customers []Customer
 	var tills []Till
+	var lostCustomers []Customer
+
 
 	//Setting up tills
 	createTills(&tills)
 
 	//Go routines
 	go generateCustomers(&customers, &running)
-	go customersToQueues(&customers, &tills, &running)
+	go customersToQueues(&customers, &tills, &lostCustomers, &running)
 	
 	time.Sleep(60 * time.Second) 
 	fmt.Println("TIMES UP!")
+	fmt.Println("Lost customers: ", lostCustomers)
 	running = false
 }
