@@ -48,8 +48,8 @@ func generateCustomers(customers *[]Customer, running *bool) {
 	weather := (rand.Intn(2-1) + 1)
 	fmt.Println("Weather is: ", weather)
 	count := 0
-	i := 0
 	var result int
+
 	for *running {
 		customer := Customer{
 			customerId:    count,
@@ -58,11 +58,10 @@ func generateCustomers(customers *[]Customer, running *bool) {
 		*customers = append(*customers, customer)
 		fmt.Println("Customers generated: ", *customers)
 
-		//var customerProducts int = (*customers)[i].numberOfItems
+		// records the number of products processed
+
 		result += customer.numberOfItems
 
-		fmt.Println("Total Number of Products:", result)
-		i++
 		count++
 		if weather == 1 {
 			time.Sleep(500 * time.Millisecond)
@@ -70,6 +69,13 @@ func generateCustomers(customers *[]Customer, running *bool) {
 			time.Sleep(500 * time.Millisecond)
 		}
 	}
+	var resultPointer = &result
+	fmt.Println("Total Number of Products: ", *resultPointer)
+
+}
+
+func totalNumberOfProducts(resultPointer *int) {
+
 }
 
 //Assigning customers to queues every 0.5 seconds
@@ -128,21 +134,6 @@ func createTills(tills *[]Till) {
 	fmt.Println("Tills at start of day: ", *tills)
 }
 
-/*
-func totalProductsProccessed(customers *[]Customer) {
-	for i := 0; i < len(*customers); {
-
-		var startingProductNumber int
-		var customerProducts int = (*customers)[i].numberOfItems
-		var totalProducts int = startingProductNumber + customerProducts
-		startingProductNumber = totalProducts
-
-		i = i + 1
-
-		fmt.Println("Total Number of Products:", startingProductNumber)
-	}
-}
-*/
 func main() {
 	//Variables
 	running := true
