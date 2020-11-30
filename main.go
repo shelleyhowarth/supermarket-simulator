@@ -115,7 +115,7 @@ func generateCustomers(customers *[]Customer, genCustomers *bool, weather *int, 
 		*result += customer.numberOfItems
 
 		if *weather == 1 {
-			time.Sleep(170 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 		} else if *weather == 2 {
 			time.Sleep(190 * time.Millisecond) //Every 120 secs
 		}
@@ -156,7 +156,7 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 
 				time.Sleep(50 * time.Millisecond)
 			}
-		} else if queuesFull == 8 && len(*customers) != 0 {
+		} else if queuesFull == 7 && len(*customers) != 0 {
 			*lostCustomers = append(*lostCustomers, (*customers)[0])
 			*customers = append((*customers)[:0], (*customers)[0+1:]...)
 		}
@@ -317,7 +317,7 @@ func main() {
 		go tills[i].processCustomers(&running, &processedCustomers)
 	}
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(20 * time.Second)
 	genCustomers = false
 
 	go checkCustomerEmpty(&customers, &running)
@@ -327,17 +327,9 @@ func main() {
 	fmt.Println("TIMES UP!")
 	fmt.Println("Total Number of customers generated: ", len(allCustomers))
 	fmt.Println("Average wait time per customer: ", totalWaitTime/float64(len(allCustomers)), " min")
-	fmt.Print("Processed customers: ")
-	for i := 0; i < len(processedCustomers); i++ {
-		fmt.Print("{", processedCustomers[i].customerId, ", ", processedCustomers[i].numberOfItems, "}")
-	}
 	fmt.Println("\nTotal Number of processed customers: ", len(processedCustomers))
 	fmt.Println("\nTotal Number of Products: ", totalProducts)
 	fmt.Println("Average Products per person: ", totalProducts/len(allCustomers))
-	fmt.Println("Lost customers: ", lostCustomers)
-	for i := 0; i < len(tills); i++ {
-		fmt.Println("Till ID: ", tills[i], " Total products scanned: ", tills[i].productsScanned)
-	}
 	fmt.Println("Average till utilisation: ", totalProducts/len(tills))
 	fmt.Println("Total opened tills: ", tillsOpened)
 	fmt.Println("Total closed tills: ", tillsClosed)
