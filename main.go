@@ -48,6 +48,8 @@ func generateCustomers(customers *[]Customer, running *bool) {
 	weather := (rand.Intn(2-1) + 1)
 	fmt.Println("Weather is: ", weather)
 	count := 0
+	i := 0
+	var result int
 	for *running {
 		customer := Customer{
 			customerId:    count,
@@ -55,23 +57,17 @@ func generateCustomers(customers *[]Customer, running *bool) {
 		}
 		*customers = append(*customers, customer)
 		fmt.Println("Customers generated: ", *customers)
+
+		//var customerProducts int = (*customers)[i].numberOfItems
+		result += customer.numberOfItems
+
+		fmt.Println("Total Number of Products:", result)
+		i++
 		count++
 		if weather == 1 {
 			time.Sleep(500 * time.Millisecond)
 		} else if weather == 2 {
 			time.Sleep(500 * time.Millisecond)
-		}
-
-		var result int
-
-		for i := 0; i < len(*customers); {
-			var customerProducts int = (*customers)[i].numberOfItems
-			var totalProducts int = customerProducts
-			result += totalProducts
-
-			i = i + 1
-
-			fmt.Println("Total Number of Products:", result)
 		}
 	}
 }
