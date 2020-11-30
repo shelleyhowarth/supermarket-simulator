@@ -21,6 +21,14 @@ type Till struct {
 	opened       bool
 }
 
+func openTill(tillId int, tills *[]Till) {
+	(*tills)[tillId].opened = true
+}
+
+func closeTill(tillId int, tills *[]Till) {
+	(*tills)[tillId].opened = false
+}
+
 func (t *Till) checkLength() int {
 	return len(t.queue)
 }
@@ -76,9 +84,9 @@ func generateCustomers(customers *[]Customer, running *bool, weather *int, allCu
 		fmt.Println("Customers generated: ", *customers)
 		count++
 		if *weather == 1 {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond)
 		} else if *weather == 2 {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 		}
 	}
 }
@@ -105,7 +113,7 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 				//After added to queue, delete customer from slice
 				*customers = append((*customers)[:0], (*customers)[0+1:]...)
 				fmt.Println("Slice after assignment", *customers)
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(80 * time.Millisecond)
 			}
 		}
 
@@ -188,6 +196,115 @@ func startTillProcess(customers *[]Customer, tills *[]Till, running *bool) {
 	}
 }
 
+func calcTillsNeeded(tills *[]Till, running *bool) {
+	// // var under3 = 0
+	// var over3 = 0
+	// var zeroCust = 0
+	// var openedTills = 0
+	// var length = 0
+	// // tooMany := false
+	// // tooLittle := false
+	var length = 0
+	// var over3 = 0
+	// var zeroCust = 0
+	var openedTills = 0
+
+	for *running {
+		time.Sleep(1000 * time.Millisecond)
+		for i := 0; i < 8; i++ {
+			if (*tills)[i].opened {
+
+				openedTills++
+
+				length = (*tills)[i].checkLength()
+
+				if length > 3 {
+					for z := 0; z < 8; z++ {
+						if (*tills)[z].opened == false {
+							openTill(z, tills)
+							fmt.Println("OPENED TILL:", z)
+							break
+
+						}
+					}
+				}
+
+			}
+		}
+
+		for i := 0; i < 8; i++ {
+			if (*tills)[i].opened {
+				openedTills++
+
+				length = (*tills)[i].checkLength()
+
+				if length <= 2 {
+					if openedTills >= 4 {
+						closeTill(i, tills)
+						break
+					}
+				}
+			}
+		}
+
+		// if zeroCust >= 2 {
+		// 	for i := 0; i < 8; i++ {
+		// 		if (*tills)[i].opened && openedTills > 5 {
+		// 			if (*tills)[i].checkLength() <= 1 {
+		// 				closeTill(i, tills)
+		// 				fmt.Println("CLOSING TILL:", i)
+		// 				break
+		// 			}
+		// 		}
+		// 	}
+
+		// 	if over3 >= 2 {
+		// 		for i := 0; i < 8; i++ {
+		// 			if !(*tills)[i].opened {
+		// 				openTill(i, tills)
+		// 				fmt.Println("OPENED TILL:", i)
+		// 				break
+		// 			}
+
+		// 		}
+		// 	}
+
+		// if zeroCust >= 2 {
+		// 	if openedTills >= 4 {
+		// 		tooMany = true
+
+		// 	}
+		// } else if over3 > 1 {
+		// 	tooLittle = true
+
+		// }
+
+		// 	if tooLittle {
+		// 		for i := 0; i < 8; i++ {
+		// 			if !(*tills)[i].opened {
+		// 				openTill(i, tills)
+		// 				fmt.Println("OPENED TILL:", i)
+		// 				break
+		// 			}
+
+		// 		}
+		// 	}
+
+		// 	if tooMany {
+		// 		for i := 0; i < 8; i++ {
+		// 			if (*tills)[i].opened {
+		// 				if (*tills)[i].checkLength() == 0 {
+		// 					closeTill(i, tills)
+		// 					fmt.Println("CLOSING TILL:", i)
+		// 					break
+		// 				}
+		// 			}
+		// 		}
+
+		// 	}
+	}
+}
+
 func main() {
 
 	fmt.Print("Weather? 1=Bad, 2=Good: ")
@@ -213,6 +330,8 @@ func main() {
 	//Go routines
 	go generateCustomers(&customers, &running, &weather, &allCustomers, &result)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
+	go startTillProcess(&customers, &tills, &running)
+	go calcTillsNeeded(&tills, &running)
 
 	//totalProductsProccessed(&customers)
 
