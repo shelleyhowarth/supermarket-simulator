@@ -72,14 +72,12 @@ func (t *Till) processCustomers(running *bool, processed *[]Customer) {
 			customer.endTime = time.Now()
 			*processed = append(*processed, customer)
 			waitTime := customer.endTime.Sub(customer.startTime)
-			fmt.Println("Customer ID: ", customer.customerId, " Wait time: ", ((float64(waitTime) * oneSecond) / 60), " min")
+			fmt.Println("Customer ", customer.customerId, " left the store. Their wait time was", ((float64(waitTime) * oneSecond) / 60), "mins")
 			totalWaitTime = totalWaitTime + float64(waitTime)
 		}
-
 	}
 }
 
-//Create customers every 0.3 or 0.5 seconds
 func generateCustomers(customers *[]Customer, genCustomers *bool, weather *int, allCustomers *[]Customer, result *int) {
 	rand.Seed(time.Now().UnixNano())
 
@@ -97,9 +95,9 @@ func generateCustomers(customers *[]Customer, genCustomers *bool, weather *int, 
 		*result += customer.numberOfItems
 
 		if *weather == 1 {
-			time.Sleep(150 * time.Millisecond)
+			time.Sleep(150 * time.Millisecond) //Every 2.4 mins
 		} else if *weather == 2 {
-			time.Sleep(190 * time.Millisecond) 
+			time.Sleep(200 * time.Millisecond) //Every 1.8 mins
 		}
 		count++
 	}
@@ -131,7 +129,7 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 				if (*customers)[0].numberOfItems < (*tills)[tillNumber].maxItems {
 					(*customers)[0].startTime = time.Now()
 					(*tills)[tillNumber].queue <- (*customers)[0]
-					fmt.Println("Assigning customers to till ", tillNumber+1, ": ", (*tills)[1].queue)
+					fmt.Println("Customer ", (*customers)[0].customerId, " entered the queue for till ", (*tills)[tillNumber].tillId)
 					//After added to queue, delete customer from slice
 					*customers = append((*customers)[:0], (*customers)[0+1:]...)
 	
@@ -139,6 +137,7 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 				}
 			}
 		} else if queuesFull == 7 && len(*customers) != 0 {
+			fmt.Println("Customer ", (*customers)[0].customerId, " left the store as all the queues were full.")
 			*lostCustomers = append(*lostCustomers, (*customers)[0])
 			*customers = append((*customers)[:0], (*customers)[0+1:]...)
 		}
@@ -177,7 +176,6 @@ func createTills(tills *[]Till) {
 	for i := 0; i < tillsOpen; i++ {
 		(*tills)[i].opened = true
 	}
-	fmt.Println("Tills at start of day: ", *tills)
 }
 
 func findShortestQueue(tills *[]Till, q1 chan int) {
@@ -225,7 +223,7 @@ func calcTillsNeeded(tills *[]Till, running *bool) {
 					for z := 0; z < 8; z++ {
 						if (*tills)[z].opened == false {
 							openTill(z, tills)
-							fmt.Println("OPENED TILL:", z)
+							fmt.Println("Opened till:", (*tills)[z].tillId)
 							break
 						}
 					}
@@ -236,12 +234,12 @@ func calcTillsNeeded(tills *[]Till, running *bool) {
 
 		for i := 0; i < 8; i++ {
 			if (*tills)[i].opened {
-
 				length = (*tills)[i].checkLength()
 
 				if length <= 2 {
 					if openedTills >= 4 {
 						closeTill(i, tills)
+						fmt.Println("Closed till:", (*tills)[i].tillId)
 						break
 					}
 				}
@@ -253,7 +251,7 @@ func calcTillsNeeded(tills *[]Till, running *bool) {
 
 func checkCustomerEmpty(customers *[]Customer, running *bool) {
 	if (len(*customers)) == 0 {
-		fmt.Println("NO MORE CUSTOMERS")
+		fmt.Println("The store has closed. The tills will now process the remaining customers.")
 		*running = false
 	}
 }
@@ -272,6 +270,9 @@ func main() {
 		fmt.Println("You didn't input 1 or 2")
 		os.Exit(3)
 	}
+
+	fmt.Println("Store is now open.")
+
 
 	//Variables
 	running := true
@@ -302,12 +303,14 @@ func main() {
 
 	time.Sleep(20 * time.Second)
 
-	fmt.Println("TIMES UP!")
+	fmt.Println("Store is now closed.")
+	fmt.Println("Statistics:")
+	fmt.Println("")
 	fmt.Println("Total Number of customers generated: ", len(allCustomers))
 	fmt.Println("Average wait time per customer: ", totalWaitTime/float64(len(allCustomers)), " min")
-	fmt.Println("\nTotal Number of processed customers: ", len(processedCustomers))
-	fmt.Println("\nTotal Number of Products: ", totalProducts)
-	fmt.Println("Average Products per person: ", totalProducts/len(allCustomers))
+	fmt.Println("Total Number of processed customers: ", len(processedCustomers))
+	fmt.Println("Total Number of products in all trolleys: ", totalProducts)
+	fmt.Println("Average products per trolley: ", totalProducts/len(allCustomers))
 	fmt.Println("Average till utilisation: ", totalProducts/len(tills))
 	fmt.Println("Number of times tills opened: ", tillsOpened)
 	fmt.Println("Number of times tills closed: ", tillsClosed)
