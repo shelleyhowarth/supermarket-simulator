@@ -1,3 +1,8 @@
+//12 hours -> 60 seconds
+//1 hour -> 5 seconds
+//30 mins -> 2.5 seconds
+//6 mins -> 0.5 seconds
+//->0.04 seconds
 package main
 
 import (
@@ -25,12 +30,14 @@ func (t *Till) checkLength() int {
 	return len(t.queue)
 }
 
-func (t *Till) processCustomers(running *bool) {
+func (t *Till) processCustomers(running *bool, processed *[]Customer) {
 	// processedCustomers := make(chan Customer)
 	for *running {
 		for customer := range t.queue {
-			time.Sleep(1000 * time.Millisecond)
-			fmt.Println(customer)
+			for i:=0; i < customer.numberOfItems; i++ {
+				time.Sleep((time.Duration(t.scannerSpeed) * 10) * time.Millisecond)
+			}
+			*processed  = append(*processed, customer)
 		}
 
 	}
@@ -58,8 +65,7 @@ func (t *Till) processCustomers(running *bool) {
 //Create customers every 0.3 or 0.5 seconds
 func generateCustomers(customers *[]Customer, running *bool, weather *int) {
 	rand.Seed(time.Now().UnixNano())
-	//good weather or bad weather
-	//weather := (rand.Intn(2-1)+1)
+
 	fmt.Println("Weather is: ", *weather)
 	count := 0
 	for *running {
@@ -69,12 +75,13 @@ func generateCustomers(customers *[]Customer, running *bool, weather *int) {
 		}
 		*customers = append(*customers, customer)
 		fmt.Println("Customers generated: ", *customers)
-		count++
+
 		if *weather == 1 {
 			time.Sleep(200 * time.Millisecond)
 		} else if *weather == 2 {
 			time.Sleep(200 * time.Millisecond)
 		}
+		count++
 	}
 }
 
@@ -158,7 +165,7 @@ func findShortestQueue(tills *[]Till, q1 chan int) {
 	var length = 6
 	for i := 0; i < 8; i++ {
 		if (*tills)[i].opened {
-			fmt.Println("till opened: ", (*tills)[i].tillId, "que lenght: ", (*tills)[i].checkLength())
+			fmt.Println("Till opened: ", (*tills)[i].tillId, "Queue length: ", (*tills)[i].checkLength())
 
 			if i == 0 {
 				length = (*tills)[i].checkLength()
@@ -177,11 +184,6 @@ func findShortestQueue(tills *[]Till, q1 chan int) {
 
 }
 
-func startTillProcess(customers *[]Customer, tills *[]Till, running *bool) {
-	for i := 0; i < 8; i++ {
-		go (*tills)[i].processCustomers(running)
-	}
-}
 
 func main() {
 
@@ -199,6 +201,7 @@ func main() {
 	var customers []Customer
 	var tills []Till
 	var lostCustomers []Customer
+	var processedCustomers []Customer
 
 	//Setting up tills
 	createTills(&tills)
@@ -206,11 +209,14 @@ func main() {
 	//Go routines
 	go generateCustomers(&customers, &running, &weather)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
-	go startTillProcess(&customers, &tills, &running)
+	//go startTillProcess(&customers, &tills, &running)
+	for i := 0; i < 8; i++ {
+		go tills[i].processCustomers(&running, &processedCustomers)
+	}
 
 	time.Sleep(60 * time.Second)
 	fmt.Println("TIMES UP!")
 	fmt.Println("Lost customers: ", lostCustomers)
-	fmt.Println("Processed customers: ", processed)
+	fmt.Println("Processed customers: ", processedCustomers)
 	running = false
 }
