@@ -32,6 +32,7 @@ type Till struct {
 	queue           chan Customer
 	opened          bool
 	productsScanned int
+	maxItems		int
 }
 
 func openTill(tillId int, tills *[]Till) {
@@ -76,25 +77,6 @@ func (t *Till) processCustomers(running *bool, processed *[]Customer) {
 		}
 
 	}
-
-	// for *running {
-	// 	if t.checkLength() > 0 {
-	// 		fmt.Println("OVER 0 CUSTOMERS PLEASE PROCESS")
-	// 	}
-	// 	for customer := range t.queue {
-	// 		for i := 0; i < customer.numberOfItems; i++ {
-	// 			time.Sleep(50 * time.Millisecond) //change this to scanning speed
-	// 			//When processing last item
-	// 			if i == customer.numberOfItems-1 {
-	// 				time.Sleep(50 * time.Millisecond) //change this to scanning speed
-	// 				//Remove customer from channel
-	// 				fmt.Println("processed ", customer)
-	// 				processed = append(processed, customer)
-	// 				processedCustomers <- customer
-	// 			}
-	// 		}
-	// 	}
-	// }
 }
 
 //Create customers every 0.3 or 0.5 seconds
@@ -117,7 +99,7 @@ func generateCustomers(customers *[]Customer, genCustomers *bool, weather *int, 
 		if *weather == 1 {
 			time.Sleep(150 * time.Millisecond)
 		} else if *weather == 2 {
-			time.Sleep(190 * time.Millisecond) //Every 120 secs
+			time.Sleep(190 * time.Millisecond) 
 		}
 		count++
 	}
@@ -144,33 +126,22 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 			}
 		}
 
-		//fmt.Println(tillNumber)
-
 		if (*tills)[tillNumber].checkLength() <= 6 && (*tills)[tillNumber].opened {
 			if len(*customers) != 0 {
-				(*customers)[0].startTime = time.Now()
-				(*tills)[tillNumber].queue <- (*customers)[0]
-				fmt.Println("Assigning customers to till ", tillNumber+1, ": ", (*tills)[1].queue)
-				//After added to queue, delete customer from slice
-				*customers = append((*customers)[:0], (*customers)[0+1:]...)
-
-				time.Sleep(50 * time.Millisecond)
+				if (*customers)[0].numberOfItems < (*tills)[tillNumber].maxItems {
+					(*customers)[0].startTime = time.Now()
+					(*tills)[tillNumber].queue <- (*customers)[0]
+					fmt.Println("Assigning customers to till ", tillNumber+1, ": ", (*tills)[1].queue)
+					//After added to queue, delete customer from slice
+					*customers = append((*customers)[:0], (*customers)[0+1:]...)
+	
+					time.Sleep(50 * time.Millisecond)
+				}
 			}
 		} else if queuesFull == 7 && len(*customers) != 0 {
 			*lostCustomers = append(*lostCustomers, (*customers)[0])
 			*customers = append((*customers)[:0], (*customers)[0+1:]...)
 		}
-
-		// if (*tills)[i].checkLength() == 6 {
-		// 	//check other till lengths
-		// 	fmt.Println("Customer lost: ", (*customers)[0])
-		// 	//Add to lost customers slice
-		// 	*lostCustomers = append(*lostCustomers, (*customers)[0])
-		// 	//Remove from original customers slice
-
-		// 	*customers = append((*customers)[:0], (*customers)[0+1:]...)
-		// }
-		// }
 		count++
 	}
 }
@@ -180,11 +151,22 @@ func createTills(tills *[]Till) {
 	rand.Seed(time.Now().UnixNano())
 
 	for i := 0; i < 8; i++ {
+		if i == 0 {
+			till := Till{
+				tillId:       i + 1,
+				scannerSpeed: float64(rand.Intn(4-1) + 1),
+				queue:        make(chan Customer, 6),
+				opened:       false,
+				maxItems:	  20,
+			}
+			*tills = append(*tills, till)
+		}
 		till := Till{
 			tillId:       i + 1,
 			scannerSpeed: float64(rand.Intn(4-1) + 1),
 			queue:        make(chan Customer, 6),
 			opened:       false,
+			maxItems:	  200,
 		}
 		*tills = append(*tills, till)
 	}
@@ -204,14 +186,12 @@ func findShortestQueue(tills *[]Till, q1 chan int) {
 
 	for i := 0; i < 8; i++ {
 		if (*tills)[i].opened {
-			// fmt.Println("Till opened: ", (*tills)[i].tillId, "Queue length: ", (*tills)[i].checkLength())
 			if i == 0 {
 				length = (*tills)[i].checkLength()
 				shortest = i
 			}
 
 			if (*tills)[i].checkLength() < length {
-				// fmt.Println("Shortest till length", (*tills)[i].checkLength())
 				length = (*tills)[i].checkLength()
 				shortest = i
 			}
@@ -311,8 +291,6 @@ func main() {
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
 	go calcTillsNeeded(&tills, &running)
 
-	//totalProductsProccessed(&customers)
-	//go startTillProcess(&customers, &tills, &running)
 	for i := 0; i < 8; i++ {
 		go tills[i].processCustomers(&running, &processedCustomers)
 	}
@@ -334,5 +312,4 @@ func main() {
 	fmt.Println("Total opened tills: ", tillsOpened)
 	fmt.Println("Total closed tills: ", tillsClosed)
 	fmt.Println("Number of lost customers ", len(lostCustomers))
-
 }
