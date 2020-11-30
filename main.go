@@ -295,7 +295,7 @@ func main() {
 		go tills[i].processCustomers(&running, &processedCustomers)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(60 * time.Second)
 	genCustomers = false
 
 	go checkCustomerEmpty(&customers, &running)
@@ -309,7 +309,7 @@ func main() {
 	fmt.Println("\nTotal Number of Products: ", totalProducts)
 	fmt.Println("Average Products per person: ", totalProducts/len(allCustomers))
 	fmt.Println("Average till utilisation: ", totalProducts/len(tills))
-	fmt.Println("Total opened tills: ", tillsOpened)
-	fmt.Println("Total closed tills: ", tillsClosed)
+	fmt.Println("Number of times tills opened: ", tillsOpened)
+	fmt.Println("Number of times tills closed: ", tillsClosed)
 	fmt.Println("Number of lost customers ", len(lostCustomers))
 }
