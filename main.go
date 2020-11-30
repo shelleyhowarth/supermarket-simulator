@@ -150,7 +150,6 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 			}
 		}
 
-
 		// if (*tills)[i].checkLength() == 6 {
 		// 	//check other till lengths
 		// 	fmt.Println("Customer lost: ", (*customers)[0])
@@ -237,7 +236,6 @@ func calcTillsNeeded(tills *[]Till, running *bool) {
 							openTill(z, tills)
 							fmt.Println("OPENED TILL:", z)
 							break
-
 						}
 					}
 				}
