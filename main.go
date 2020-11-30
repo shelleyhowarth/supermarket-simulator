@@ -56,7 +56,7 @@ func (t *Till) processCustomers(running *bool) {
 }
 
 //Create customers every 0.3 or 0.5 seconds
-func generateCustomers(customers *[]Customer, running *bool, weather *int) {
+func generateCustomers(customers *[]Customer, running *bool, weather *int, allCustomers *[]Customer, result *int) {
 	rand.Seed(time.Now().UnixNano())
 	//good weather or bad weather
 	//weather := (rand.Intn(2-1)+1)
@@ -68,6 +68,11 @@ func generateCustomers(customers *[]Customer, running *bool, weather *int) {
 			numberOfItems: (rand.Intn(200-1) + 1),
 		}
 		*customers = append(*customers, customer)
+		*allCustomers = append(*allCustomers, customer)
+		fmt.Println("Customers generated: ", *customers)
+
+		// records the number of products processed
+		*result += customer.numberOfItems
 		fmt.Println("Customers generated: ", *customers)
 		count++
 		if *weather == 1 {
@@ -197,20 +202,26 @@ func main() {
 	//Variables
 	running := true
 	var customers []Customer
+	var allCustomers []Customer
 	var tills []Till
 	var lostCustomers []Customer
+	var result int
 
 	//Setting up tills
 	createTills(&tills)
 
 	//Go routines
-	go generateCustomers(&customers, &running, &weather)
+	go generateCustomers(&customers, &running, &weather, &allCustomers, &result)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
-	go startTillProcess(&customers, &tills, &running)
 
-	time.Sleep(60 * time.Second)
+	//totalProductsProccessed(&customers)
+
+	time.Sleep(20 * time.Second)
 	fmt.Println("TIMES UP!")
 	fmt.Println("Lost customers: ", lostCustomers)
 	fmt.Println("Processed customers: ", processed)
+	fmt.Println("Total Number of Products: ", result)
+	fmt.Println("Average Products per person: ", result/len(allCustomers))
+
 	running = false
 }
