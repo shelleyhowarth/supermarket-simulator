@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+	"os"
 )
 
 type Customer struct {
@@ -44,11 +45,11 @@ func (t *Till) processCustomers() {
 }
 
 //Create customers every 0.3 or 0.5 seconds
-func generateCustomers(customers *[]Customer, running *bool) {
+func generateCustomers(customers *[]Customer, running *bool, weather *int) {
 		rand.Seed(time.Now().UnixNano())
 		//good weather or bad weather
-		weather := (rand.Intn(2-1)+1)
-		fmt.Println("Weather is: ", weather)
+		//weather := (rand.Intn(2-1)+1)
+		fmt.Println("Weather is: ", *weather)
 		count := 0
 		for *running {
 			customer := Customer {
@@ -58,9 +59,9 @@ func generateCustomers(customers *[]Customer, running *bool) {
 			*customers = append(*customers, customer)
 			fmt.Println("Customers generated: ", *customers)
 			count++
-			if weather == 1 {
+			if *weather == 1 {
 				time.Sleep(500 * time.Millisecond) 
-			} else if weather == 2 {
+			} else if *weather == 2 {
 				time.Sleep(500 * time.Millisecond) 
 			}
 		}
@@ -72,7 +73,7 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 	time.Sleep(1 * time.Second)
 	count := 0
 	for *running {
-			for i:= 0; i < 8; i++ {
+		for i:= 0; i < 8; i++ {
 				go (*tills)[i].processCustomers()
 				for (*tills)[i].checkLength() < 6 && (*tills)[i].opened {
 					//Adds customer to queue
@@ -102,7 +103,7 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 //Creating the initial till slice and opening a few of them
 func createTills(tills *[]Till) {
 	rand.Seed(time.Now().UnixNano())
-
+	fmt.Print("Length: ", len(*tills))
 	for i:= 0; i < 8; i++ {
 		till := Till {
 			tillId: i+1,
@@ -123,18 +124,28 @@ func createTills(tills *[]Till) {
 }
 
 func main() {
+
+
+    fmt.Print("Weather? 1=Bad, 2=Good: ")
+    var weather int
+    _, err := fmt.Scanf("%d", &weather)
+    if err != nil {
+        fmt.Fprintln(os.Stderr, err)
+        return
+    }
+	fmt.Println(weather)
+
 	//Variables
 	running := true
 	var customers []Customer
 	var tills []Till
 	var lostCustomers []Customer
 
-
 	//Setting up tills
 	createTills(&tills)
 
 	//Go routines
-	go generateCustomers(&customers, &running)
+	go generateCustomers(&customers, &running, &weather)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
 	
 	time.Sleep(60 * time.Second) 
