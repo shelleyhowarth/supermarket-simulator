@@ -29,6 +29,7 @@ type Till struct {
 	scannerSpeed float64
 	queue        chan Customer
 	opened       bool
+	productsScanned int
 }
 
 
@@ -54,6 +55,7 @@ func (t *Till) processCustomers(running *bool, processed *[]Customer) {
 		for customer := range t.queue {
 			for i:=0; i < customer.numberOfItems; i++ {
 				time.Sleep((time.Duration(t.scannerSpeed)) * time.Millisecond)
+				t.productsScanned++
 			}
 			customer.endTime = time.Now()
 			*processed = append(*processed, customer)
@@ -229,19 +231,19 @@ func main() {
 	var tills []Till
 	var lostCustomers []Customer
 	var processedCustomers []Customer
-	var result int
+	var totalProducts int
 
 	//Setting up tills
 	createTills(&tills)
 
 	//Go routines
-	go generateCustomers(&customers, &running, &weather, &allCustomers, &result)
+	go generateCustomers(&customers, &running, &weather, &allCustomers, &totalProducts)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
 	for i := 0; i < 8; i++ {
 		go tills[i].processCustomers(&running, &processedCustomers)
 	}
 
-	time.Sleep(60 * time.Second)
+	time.Sleep(20 * time.Second)
 	running = false
 	fmt.Println("TIMES UP!")
 	fmt.Println("Total Number of customers generated: ", len(allCustomers))
@@ -251,7 +253,12 @@ func main() {
 		fmt.Print("{", processedCustomers[i].customerId, ", ", processedCustomers[i].numberOfItems, "}")
 	}
 	fmt.Println("\nTotal Number of processed customers: ", len(processedCustomers))
-	fmt.Println("\nTotal Number of Products: ", result)
-	fmt.Println("Average Products per person: ", result/len(allCustomers))
+	fmt.Println("\nTotal Number of Products: ", totalProducts)
+	fmt.Println("Average Products per person: ", totalProducts/len(allCustomers))
 	fmt.Println("Lost customers: ", lostCustomers)
+	for i:= 0; i < len(tills); i++ {
+		fmt.Println("Till ID: ", tills[i], " Total products scanned: ", tills[i].productsScanned)
+	}
+	fmt.Println("Average till utilisation: ", totalProducts/len(tills))
+
 }
