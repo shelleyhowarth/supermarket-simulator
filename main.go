@@ -11,6 +11,8 @@ type Customer struct {
 	numberOfItems int
 }
 
+var processed []Customer
+
 type Till struct {
 	tillId       int
 	scannerSpeed float64
@@ -29,14 +31,16 @@ func (t *Till) processCustomers() {
 	for customer := range t.queue {
 		for i:= 0; i < customer.numberOfItems; i++ {
 			time.Sleep(50 * time.Millisecond) //change this to scanning speed
+			//When processing last item
 			if i == customer.numberOfItems - 1 {
 				time.Sleep(50 * time.Millisecond) //change this to scanning speed
 				//Remove customer from channel
 				fmt.Println("processed ", customer)
+				processed = append(processed, customer)
 				processedCustomers <- customer
 			}
 		}
-    }
+	}
 }
 
 //Create customers every 0.3 or 0.5 seconds
@@ -55,7 +59,7 @@ func generateCustomers(customers *[]Customer, running *bool) {
 			fmt.Println("Customers generated: ", *customers)
 			count++
 			if weather == 1 {
-				time.Sleep(300 * time.Millisecond) 
+				time.Sleep(500 * time.Millisecond) 
 			} else if weather == 2 {
 				time.Sleep(500 * time.Millisecond) 
 			}
@@ -72,19 +76,22 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 				go (*tills)[i].processCustomers()
 				for (*tills)[i].checkLength() < 6 && (*tills)[i].opened {
 					//Adds customer to queue
-					(*tills)[i].queue <- (*customers)[0]
-					fmt.Println("Assigning customers to till ", i+1, ": ", (*tills)[1].queue)
-					//After added to queue, delete customer from slice
-					*customers = append((*customers)[:0], (*customers)[0+1:]...)
-					fmt.Println("Slice after assignment", *customers)
-					time.Sleep(500 * time.Millisecond)
+					if len(*customers)!= 0 {
+						(*tills)[i].queue <- (*customers)[0]
+						fmt.Println("Assigning customers to till ", i+1, ": ", (*tills)[1].queue)
+						//After added to queue, delete customer from slice
+						*customers = append((*customers)[:0], (*customers)[0+1:]...)
+						fmt.Println("Slice after assignment", *customers)
+						time.Sleep(500 * time.Millisecond)
+					}
 				}
 				if (*tills)[i].checkLength() == 6 {
+					//check other till lengths
 					fmt.Println("Customer lost: ", (*customers)[0])
 					//Add to lost customers slice
 					*lostCustomers = append(*lostCustomers, (*customers)[0])
-
 					//Remove from original customers slice
+
 					*customers = append((*customers)[:0], (*customers)[0+1:]...)
 				}
 			}
@@ -133,5 +140,6 @@ func main() {
 	time.Sleep(60 * time.Second) 
 	fmt.Println("TIMES UP!")
 	fmt.Println("Lost customers: ", lostCustomers)
+	fmt.Println("Processed customers: ", processed)
 	running = false
 }
