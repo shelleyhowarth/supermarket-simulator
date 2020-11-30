@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"time"
 )
 
@@ -55,11 +56,11 @@ func (t *Till) processCustomers(running *bool) {
 }
 
 //Create customers every 0.3 or 0.5 seconds
-func generateCustomers(customers *[]Customer, running *bool) {
+func generateCustomers(customers *[]Customer, running *bool, weather *int) {
 	rand.Seed(time.Now().UnixNano())
 	//good weather or bad weather
-	weather := (rand.Intn(2-1) + 1)
-	fmt.Println("Weather is: ", weather)
+	//weather := (rand.Intn(2-1)+1)
+	fmt.Println("Weather is: ", *weather)
 	count := 0
 	for *running {
 		customer := Customer{
@@ -69,9 +70,9 @@ func generateCustomers(customers *[]Customer, running *bool) {
 		*customers = append(*customers, customer)
 		fmt.Println("Customers generated: ", *customers)
 		count++
-		if weather == 1 {
+		if *weather == 1 {
 			time.Sleep(200 * time.Millisecond)
-		} else if weather == 2 {
+		} else if *weather == 2 {
 			time.Sleep(200 * time.Millisecond)
 		}
 	}
@@ -184,6 +185,15 @@ func startTillProcess(customers *[]Customer, tills *[]Till, running *bool) {
 
 func main() {
 
+	fmt.Print("Weather? 1=Bad, 2=Good: ")
+	var weather int
+	_, err := fmt.Scanf("%d", &weather)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
+	fmt.Println(weather)
+
 	//Variables
 	running := true
 	var customers []Customer
@@ -194,7 +204,7 @@ func main() {
 	createTills(&tills)
 
 	//Go routines
-	go generateCustomers(&customers, &running)
+	go generateCustomers(&customers, &running, &weather)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
 	go startTillProcess(&customers, &tills, &running)
 
