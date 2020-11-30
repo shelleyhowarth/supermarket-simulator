@@ -2,7 +2,9 @@
 //1 hour -> 5 seconds
 //30 mins -> 2.5 seconds
 //6 mins -> 0.5 seconds
-//->0.04 seconds
+//3 mins -> 0.25 seconds
+//1.5 min ->  ->0.125 seconds
+//1 second -> 0.000084 seconds
 package main
 
 import (
@@ -15,9 +17,12 @@ import (
 type Customer struct {
 	customerId    int
 	numberOfItems int
+	startTime 	  time.Time
+	endTime 	  time.Time
 }
 
-var processed []Customer
+var totalWaitTime = 0.0
+var totalTime = 60000.0
 
 type Till struct {
 	tillId       int
@@ -26,18 +31,35 @@ type Till struct {
 	opened       bool
 }
 
+
 func (t *Till) checkLength() int {
 	return len(t.queue)
 }
 
+func (c *Customer) startWaitTime() (time.Time) {
+	startTime := time.Now()
+	return startTime
+}
+
+func (c *Customer) endWaitTime(startTime time.Time) (time.Duration) {
+	endTime := time.Now()
+	waitTime := endTime.Sub(startTime)
+
+	return waitTime	
+}
+
 func (t *Till) processCustomers(running *bool, processed *[]Customer) {
-	// processedCustomers := make(chan Customer)
 	for *running {
+		oneSecond := (((totalTime/12)/60)/60)
 		for customer := range t.queue {
 			for i:=0; i < customer.numberOfItems; i++ {
-				time.Sleep((time.Duration(t.scannerSpeed) * 10) * time.Millisecond)
+				time.Sleep((time.Duration(t.scannerSpeed)) * time.Millisecond)
 			}
-			*processed  = append(*processed, customer)
+			customer.endTime = time.Now()
+			*processed = append(*processed, customer)
+			waitTime := customer.endTime.Sub(customer.startTime)
+			fmt.Println("Customer ID: ", customer.customerId, " Wait time: ", ((float64(waitTime)*oneSecond)/60), " min")
+			totalWaitTime = totalWaitTime + float64(waitTime)
 		}
 
 	}
@@ -75,16 +97,14 @@ func generateCustomers(customers *[]Customer, running *bool, weather *int, allCu
 		}
 		*customers = append(*customers, customer)
 		*allCustomers = append(*allCustomers, customer)
-		fmt.Println("Customers generated: ", *customers)
 
 		// records the number of products processed
 		*result += customer.numberOfItems
-		fmt.Println("Customers generated: ", *customers)
 
 		if *weather == 1 {
-			time.Sleep(400 * time.Millisecond)
+			time.Sleep(80 * time.Millisecond) //Every 60 secs
 		} else if *weather == 2 {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(120 * time.Millisecond) //Every 120 secs
 		}
 		count++
 	}
@@ -103,15 +123,15 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 		go findShortestQueue(tills, q1)
 		tillNumber := <-q1
 
-		fmt.Println(tillNumber)
+		//fmt.Println(tillNumber)
 
 		if (*tills)[tillNumber].checkLength() <= 6 && (*tills)[tillNumber].opened {
 			if len(*customers) != 0 {
+				(*customers)[0].startTime = time.Now()
 				(*tills)[tillNumber].queue <- (*customers)[0]
 				fmt.Println("Assigning customers to till ", tillNumber+1, ": ", (*tills)[1].queue)
 				//After added to queue, delete customer from slice
 				*customers = append((*customers)[:0], (*customers)[0+1:]...)
-				fmt.Println("Slice after assignment", *customers)
 				//time.Sleep(200 * time.Millisecond)
 			}
 		}
@@ -189,7 +209,7 @@ func findShortestQueue(tills *[]Till, q1 chan int) {
 
 func main() {
 
-	fmt.Print("Weather? 1=Bad, 2=Good: ")
+	fmt.Print("Weather? 1 = Bad, 2 = Good: ")
 	var weather int
 	_, err := fmt.Scanf("%d", &weather)
 	if err != nil {
@@ -217,17 +237,21 @@ func main() {
 	//Go routines
 	go generateCustomers(&customers, &running, &weather, &allCustomers, &result)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
-	//go startTillProcess(&customers, &tills, &running)
 	for i := 0; i < 8; i++ {
 		go tills[i].processCustomers(&running, &processedCustomers)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(60 * time.Second)
 	running = false
 	fmt.Println("TIMES UP!")
-	fmt.Println("Lost customers: ", lostCustomers)
-	fmt.Println("Processed customers: ", processedCustomers)
-	fmt.Println("Total Number of Products: ", result)
+	fmt.Println("Total Number of customers generated: ", len(allCustomers))
+	fmt.Println("Average wait time per customer: " , totalWaitTime/float64(len(allCustomers)), " min")
+	fmt.Print("Processed customers: ")
+	for i:= 0; i<len(processedCustomers); i++ {
+		fmt.Print("{", processedCustomers[i].customerId, ", ", processedCustomers[i].numberOfItems, "}")
+	}
+	fmt.Println("\nTotal Number of processed customers: ", len(processedCustomers))
+	fmt.Println("\nTotal Number of Products: ", result)
 	fmt.Println("Average Products per person: ", result/len(allCustomers))
-
+	fmt.Println("Lost customers: ", lostCustomers)
 }
