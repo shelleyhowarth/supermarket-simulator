@@ -2,7 +2,9 @@
 //1 hour -> 5 seconds
 //30 mins -> 2.5 seconds
 //6 mins -> 0.5 seconds
-//->0.04 seconds
+//3 mins -> 0.25 seconds
+//1.5 min ->  ->0.125 seconds
+//1 second -> 0.000084 seconds
 package main
 
 import (
@@ -15,37 +17,62 @@ import (
 type Customer struct {
 	customerId    int
 	numberOfItems int
+	startTime     time.Time
+	endTime       time.Time
 }
 
-var processed []Customer
+var totalWaitTime = 0.0
+var tillsClosed = 0
+var tillsOpened = 0
+var totalTime = 60000.0
 
 type Till struct {
-	tillId       int
-	scannerSpeed float64
-	queue        chan Customer
-	opened       bool
+	tillId          int
+	scannerSpeed    float64
+	queue           chan Customer
+	opened          bool
+	productsScanned int
 }
 
 func openTill(tillId int, tills *[]Till) {
 	(*tills)[tillId].opened = true
+	tillsOpened++
 }
 
 func closeTill(tillId int, tills *[]Till) {
 	(*tills)[tillId].opened = false
+	tillsClosed++
 }
 
 func (t *Till) checkLength() int {
 	return len(t.queue)
 }
 
+func (c *Customer) startWaitTime() time.Time {
+	startTime := time.Now()
+	return startTime
+}
+
+func (c *Customer) endWaitTime(startTime time.Time) time.Duration {
+	endTime := time.Now()
+	waitTime := endTime.Sub(startTime)
+
+	return waitTime
+}
+
 func (t *Till) processCustomers(running *bool, processed *[]Customer) {
-	// processedCustomers := make(chan Customer)
 	for *running {
+		oneSecond := (((totalTime / 12) / 60) / 60)
 		for customer := range t.queue {
 			for i := 0; i < customer.numberOfItems; i++ {
 				time.Sleep((time.Duration(t.scannerSpeed) * 10) * time.Millisecond)
+				t.productsScanned++
 			}
+			customer.endTime = time.Now()
 			*processed = append(*processed, customer)
+			waitTime := customer.endTime.Sub(customer.startTime)
+			fmt.Println("Customer ID: ", customer.customerId, " Wait time: ", ((float64(waitTime) * oneSecond) / 60), " min")
+			totalWaitTime = totalWaitTime + float64(waitTime)
 		}
 
 	}
@@ -83,16 +110,14 @@ func generateCustomers(customers *[]Customer, running *bool, weather *int, allCu
 		}
 		*customers = append(*customers, customer)
 		*allCustomers = append(*allCustomers, customer)
-		fmt.Println("Customers generated: ", *customers)
 
 		// records the number of products processed
 		*result += customer.numberOfItems
-		fmt.Println("Customers generated: ", *customers)
 
 		if *weather == 1 {
 			time.Sleep(170 * time.Millisecond)
 		} else if *weather == 2 {
-			time.Sleep(200 * time.Millisecond)
+			time.Sleep(190 * time.Millisecond) //Every 120 secs
 		}
 		count++
 	}
@@ -111,30 +136,21 @@ func customersToQueues(customers *[]Customer, tills *[]Till, lostCustomers *[]Cu
 		go findShortestQueue(tills, q1)
 		tillNumber := <-q1
 
-		fmt.Println(tillNumber)
+		//fmt.Println(tillNumber)
 
 		if (*tills)[tillNumber].checkLength() <= 6 && (*tills)[tillNumber].opened {
 			if len(*customers) != 0 {
+				(*customers)[0].startTime = time.Now()
 				(*tills)[tillNumber].queue <- (*customers)[0]
 				fmt.Println("Assigning customers to till ", tillNumber+1, ": ", (*tills)[1].queue)
 				//After added to queue, delete customer from slice
 				*customers = append((*customers)[:0], (*customers)[0+1:]...)
-				fmt.Println("Slice after assignment", *customers)
-				time.Sleep(50 * time.Millisecond)
+
+				time.Sleep(150 * time.Millisecond)
 			}
 		}
 
-		// for (*tills)[i].checkLength() < 6 && (*tills)[i].opened {
-		// 	//Adds customer to queue
-		// 	if len(*customers)!= 0 {
-		// 		(*tills)[i].queue <- (*customers)[0]
-		// 		fmt.Println("Assigning customers to till ", i+1, ": ", (*tills)[1].queue)
-		// 		//After added to queue, delete customer from slice
-		// 		*customers = append((*customers)[:0], (*customers)[0+1:]...)
-		// 		fmt.Println("Slice after assignment", *customers)
-		// 		time.Sleep(500 * time.Millisecond)
-		// 	}
-		// }
+
 		// if (*tills)[i].checkLength() == 6 {
 		// 	//check other till lengths
 		// 	fmt.Println("Customer lost: ", (*customers)[0])
@@ -195,16 +211,8 @@ func findShortestQueue(tills *[]Till, q1 chan int) {
 }
 
 func calcTillsNeeded(tills *[]Till, running *bool) {
-	// // var under3 = 0
-	// var over3 = 0
-	// var zeroCust = 0
-	// var openedTills = 0
-	// var length = 0
-	// // tooMany := false
-	// // tooLittle := false
+	time.Sleep(900 * time.Millisecond)
 	var length = 0
-	// var over3 = 0
-	// var zeroCust = 0
 	var openedTills = 0
 
 	for *running {
@@ -215,9 +223,15 @@ func calcTillsNeeded(tills *[]Till, running *bool) {
 
 				openedTills++
 
+			}
+		}
+
+		for i := 0; i < 8; i++ {
+			if (*tills)[i].opened {
+
 				length = (*tills)[i].checkLength()
 
-				if length > 3 {
+				if length > 4 {
 					for z := 0; z < 8; z++ {
 						if (*tills)[z].opened == false {
 							openTill(z, tills)
@@ -233,12 +247,11 @@ func calcTillsNeeded(tills *[]Till, running *bool) {
 
 		for i := 0; i < 8; i++ {
 			if (*tills)[i].opened {
-				openedTills++
 
 				length = (*tills)[i].checkLength()
 
 				if length <= 2 {
-					if openedTills >= 3 {
+					if openedTills >= 4 {
 						closeTill(i, tills)
 						break
 					}
@@ -246,67 +259,12 @@ func calcTillsNeeded(tills *[]Till, running *bool) {
 			}
 		}
 
-		// if zeroCust >= 2 {
-		// 	for i := 0; i < 8; i++ {
-		// 		if (*tills)[i].opened && openedTills > 5 {
-		// 			if (*tills)[i].checkLength() <= 1 {
-		// 				closeTill(i, tills)
-		// 				fmt.Println("CLOSING TILL:", i)
-		// 				break
-		// 			}
-		// 		}
-		// 	}
-
-		// 	if over3 >= 2 {
-		// 		for i := 0; i < 8; i++ {
-		// 			if !(*tills)[i].opened {
-		// 				openTill(i, tills)
-		// 				fmt.Println("OPENED TILL:", i)
-		// 				break
-		// 			}
-
-		// 		}
-		// 	}
-
-		// if zeroCust >= 2 {
-		// 	if openedTills >= 4 {
-		// 		tooMany = true
-
-		// 	}
-		// } else if over3 > 1 {
-		// 	tooLittle = true
-
-		// }
-
-		// 	if tooLittle {
-		// 		for i := 0; i < 8; i++ {
-		// 			if !(*tills)[i].opened {
-		// 				openTill(i, tills)
-		// 				fmt.Println("OPENED TILL:", i)
-		// 				break
-		// 			}
-
-		// 		}
-		// 	}
-
-		// 	if tooMany {
-		// 		for i := 0; i < 8; i++ {
-		// 			if (*tills)[i].opened {
-		// 				if (*tills)[i].checkLength() == 0 {
-		// 					closeTill(i, tills)
-		// 					fmt.Println("CLOSING TILL:", i)
-		// 					break
-		// 				}
-		// 			}
-		// 		}
-
-		// 	}
 	}
 }
 
 func main() {
 
-	fmt.Print("Weather? 1=Bad, 2=Good: ")
+	fmt.Print("Weather? 1 = Bad, 2 = Good: ")
 	var weather int
 	_, err := fmt.Scanf("%d", &weather)
 	if err != nil {
@@ -326,13 +284,13 @@ func main() {
 	var tills []Till
 	var lostCustomers []Customer
 	var processedCustomers []Customer
-	var result int
+	var totalProducts int
 
 	//Setting up tills
 	createTills(&tills)
 
 	//Go routines
-	go generateCustomers(&customers, &running, &weather, &allCustomers, &result)
+	go generateCustomers(&customers, &running, &weather, &allCustomers, &totalProducts)
 	go customersToQueues(&customers, &tills, &lostCustomers, &running)
 	go calcTillsNeeded(&tills, &running)
 
@@ -345,9 +303,21 @@ func main() {
 	time.Sleep(20 * time.Second)
 	running = false
 	fmt.Println("TIMES UP!")
+	fmt.Println("Total Number of customers generated: ", len(allCustomers))
+	fmt.Println("Average wait time per customer: ", totalWaitTime/float64(len(allCustomers)), " min")
+	fmt.Print("Processed customers: ")
+	for i := 0; i < len(processedCustomers); i++ {
+		fmt.Print("{", processedCustomers[i].customerId, ", ", processedCustomers[i].numberOfItems, "}")
+	}
+	fmt.Println("\nTotal Number of processed customers: ", len(processedCustomers))
+	fmt.Println("\nTotal Number of Products: ", totalProducts)
+	fmt.Println("Average Products per person: ", totalProducts/len(allCustomers))
 	fmt.Println("Lost customers: ", lostCustomers)
-	fmt.Println("Processed customers: ", processedCustomers)
-	fmt.Println("Total Number of Products: ", result)
-	fmt.Println("Average Products per person: ", result/len(allCustomers))
+	for i := 0; i < len(tills); i++ {
+		fmt.Println("Till ID: ", tills[i], " Total products scanned: ", tills[i].productsScanned)
+	}
+	fmt.Println("Average till utilisation: ", totalProducts/len(tills))
+	fmt.Println("Total opened tills: ", tillsOpened)
+	fmt.Println("Total closed tills: ", tillsClosed)
 
 }
