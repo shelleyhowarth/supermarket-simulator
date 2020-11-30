@@ -1,10 +1,7 @@
-//12 hours -> 60 seconds
-//1 hour -> 5 seconds
-//30 mins -> 2.5 seconds
-//6 mins -> 0.5 seconds
-//3 mins -> 0.25 seconds
-//1.5 min ->  ->0.125 seconds
-//1 second -> 0.000084 seconds
+//Shelley Howarth - 17225663
+//Aaron Long - 17222478
+//Conor Canton - 16164571
+//Murdo Mackenzie - 16152522
 package main
 
 import (
